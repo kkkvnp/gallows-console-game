@@ -4,58 +4,44 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 public class GallowsApplication {
 
-    private static final String FILE_PATH = "resource/modified_word.txt";
-    private static String WORD;
-    private static char[] WORD_LETTERS;
-    private static char[] SECURITY_WORD_LETTERS; //securityWordArray
-    private static char INPUT_LETTER;
+    private static final Pattern pattern = Pattern.compile("[а-яА-ЯёЁ]");
+    private static final Scanner scanner = new Scanner(System.in);
+
+    private static final String FILE_PATH = "resource/words.txt";
+    private static String word;
+    private static char[] wordLetters;
+    private static char[] securityWordLetters;
+    private static char inputLetter;
     private static final List<String> INPUT_LETTERS = new ArrayList<>();
-    private static int COUNT_MISTAKE = 0;
+
+    private static int countMistake = 0;
     private static final int MAX_COUNT_MISTAKE = 6;
 
+    private static final String MESSAGE_ERROR = "ПРОИЗОШЛА ОШИБКА: ";
+    private static final String MESSAGE_LETTER_INPUT = "ВВЕДИТЕ БУКВУ И НАЖМИТЕ ENTER: ";
+    private static final String MESSAGE_EMPTY_INPUT = "ОШИБКА ВВОДА: ПУСТОЕ ЗНАЧЕНИЕ - ВЫ НИЧЕГО НЕ ВВЕЛИ! ";
+    private static final String MESSAGE_REPEAT_INPUT = "ОШИБКА ВВОДА: ПОВТОР БУКВЫ - ВЫ УЖЕ ВВОДИЛИ ЭТУК БУКВУ! ";
+    private static final String MESSAGE_NOT_RU_LETTER_INPUT = "ОШИБКА ВВОДА: НЕВЕРНЫЙ ФОРМАТ - ЭТО НЕ БУКВА РУССКОГО ЯЗЫКА! ";
+
+
     public static void main(String[] args) {
-        //modifiedFile();
         startGameRound();
     }
 
-    /**
-     * Файл с топ-1000 существительных РЯ. В исходном файле он пронумерован по строкам -> перезаписываем слова в новый файл без порядковых номеров и пробелов (табуляции).
-     */
-    public static void modifiedFile () {
-        String fileName = "resource/word.txt";
-        try (BufferedReader reader = new BufferedReader(new FileReader(fileName));
-             BufferedWriter writer = new BufferedWriter(new FileWriter(FILE_PATH))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                int indexSpaceLine = line.indexOf("\t");
-                if (indexSpaceLine != -1) {
-                    String modifiedLine = line.substring(indexSpaceLine+1);
-                    writer.write(modifiedLine);
-                } else {
-                    writer.write(line);
-                }
-                writer.newLine();
-            }
-        } catch (IOException e) {
-            System.out.println("ПРОИЗОШЛА ОШИБКА: " + e.getMessage());
-        }
-    }
-
-    public static void startGameRound() {
+    private static void startGameRound() {
         showGameDescription();
         showGameRules();
         showGameStart();
         startGameLoop();
     }
 
-    /**
-     * Описание игры
-     */
-    public static void showGameDescription() {
+    private static void showGameDescription() {
         System.out.println("***");
         System.out.println("ОПИСАНИЕ ИГРЫ.");
         System.out.println("«Виселица» - это игра в слова.");
@@ -63,10 +49,7 @@ public class GallowsApplication {
         System.out.println("За каждую неверную букву, к виселице добавлять часть тела. Цель игры – отгадать слово до того, как висельник будет повешен.\n");
     }
 
-    /**
-     * Правила игры
-     */
-    public static void showGameRules() {
+    private static void showGameRules() {
         System.out.println("***");
         System.out.println("ПРАВИЛА ИГРЫ.");
         System.out.println("""
@@ -82,53 +65,64 @@ public class GallowsApplication {
                 """);
     }
 
-    /**
-     * Информация о начале игры
-     */
-    public static void showGameStart() {
+    private static void showGameStart() {
         System.out.println("***");
         System.out.println("Начало игры.");
         System.out.println("Подождите, сейчас программа загадает слово…");
-        //TODO добавить паузу 3сек
         System.out.println("***");
     }
 
-    /**
-     * Логика игры
-     */
-    public static void startGameLoop() {
-        WORD = getWord();
-        WORD_LETTERS = getWordLetters(WORD);
-        SECURITY_WORD_LETTERS = getSecurityWordLetters(WORD);
+    private static void startGameLoop() {
+        word = getWord();
+        wordLetters = toLetters(word);
+        initSecurityWordLetters(word);
+        printSecurityWordLetters();
 
-        while(COUNT_MISTAKE < MAX_COUNT_MISTAKE) {
-            System.out.print("ВВЕДИТЕ БУКВУ И НАЖМИТЕ ENTER: ");
-            INPUT_LETTER = getLetterUser();
-            addUsedLetters(INPUT_LETTER);
-            COUNT_MISTAKE = getCountMistake(INPUT_LETTER);
-            SECURITY_WORD_LETTERS = getSecurityWordLetters(INPUT_LETTER);
+        while(!isGameOver()) {
+            System.out.print(MESSAGE_LETTER_INPUT);
+            setLetterUser();
+            addUsedLetters(inputLetter);
+            setCountMistake(inputLetter);
+            addLetterSecurityWordLetters(inputLetter);
             printMessageInfo();
-            drowGallows(COUNT_MISTAKE);
+            Picture.printPicture(countMistake);
 
-            if (COUNT_MISTAKE != MAX_COUNT_MISTAKE) {
-                showSecurityWordLetters(); // чтобы не печатало засекреченное слово, когда кол-во ошибок 6, а сразу печать, что игра закончилась
-            } else System.out.printf("ПОПЫТКИ ЗАКОНЧАЛИСЬ, ВЫ ПРОИГРАЛИ! ЗАГАДАННОЕ СЛОВО - %s.", WORD);
-
-            if (Arrays.equals(SECURITY_WORD_LETTERS, WORD_LETTERS)) {
-                System.out.println("ВЫ ВЫЙГРАЛИ! ПОЗДРАВЛЯЕМ!");
-                break;
+            if(isWin()) {
+                printWinMessage();
+            } else if (isLose()) {
+                printLoseMessage();
+            } else {
+                printSecurityWordLetters();
             }
         }
     }
 
-    /**
-     * Получение случайного слова из текстового файла: посчитать кол-во строк в файле -> сгенерировать случайное число из диапазона -> достать слово
-     */
-    public static String getWord() {
+    private static boolean isGameOver() {
+        return isWin() || isLose(); // countMistake > MAX_COUNT_MISTAKE;
+    }
+
+    private static boolean isWin() {
+        return Arrays.equals(securityWordLetters, wordLetters);
+    }
+
+    private static boolean isLose() {
+        return countMistake == MAX_COUNT_MISTAKE;
+    }
+
+    private static void printWinMessage() {
+        System.out.println("ВЫ ВЫЙГРАЛИ! ПОЗДРАВЛЯЕМ!");
+
+    }
+
+    private static void printLoseMessage() {
+        System.out.printf("ПОПЫТКИ ЗАКОНЧАЛИСЬ, ВЫ ПРОИГРАЛИ! ЗАГАДАННОЕ СЛОВО - %s.", word);
+    }
+
+    private static String getWord() {
         long countLine = getAllCountLineFile();
         long randomCountLine = getRandomCountLineFile(countLine);
         int targetLineNumber = Math.toIntExact(randomCountLine);
-        String word;
+        String word = "";
         try (LineNumberReader reader = new LineNumberReader(new FileReader(FILE_PATH))) {
             while ((word = reader.readLine()) != null) {
                 if (reader.getLineNumber() == targetLineNumber) {
@@ -137,177 +131,113 @@ public class GallowsApplication {
                 }
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            System.out.println(MESSAGE_ERROR + e.getMessage());
         }
         return word;
     }
 
-    /**
-     * Количество строк в текстовой файле
-     */
-    public static long getAllCountLineFile() {
-        long countLine;
+    private static long getAllCountLineFile() {
+        long countLine = 0;
         try (Stream<String> lines = Files.lines(Paths.get(FILE_PATH))) {
             countLine = lines.count();
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            System.out.println(MESSAGE_ERROR + e.getMessage());
         }
         return countLine;
     }
 
-    /**
-     * Получение случайного номера строки (от 1 до countLine = 1000 в нашем файле)
-     */
-    public static long getRandomCountLineFile (long value) {
+    private static long getRandomCountLineFile (long value) {
         Random rand = new Random();
         return rand.nextLong(value) + 1;
     }
 
-    /**
-     * Получения из слова массива символов
-     */
-    public  static char[] getWordLetters(String word) {
+    private  static char[] toLetters(String word) {
         return word.toUpperCase().toCharArray();
     }
 
-    /**
-     * Инициализация массива для пользователя: вместо букв символ нижнее подчеркивание
-     */
-    public  static char[] getSecurityWordLetters(String word) {
-        char[] securityWordArray = new char[word.length()];
-        Arrays.fill(securityWordArray, '_');
-        System.out.print("ЗАГАДАННОЕ СЛОВО: ");
-        System.out.println(securityWordArray);
-        return securityWordArray;
+    private static void initSecurityWordLetters(String word) {
+        securityWordLetters = new char[word.length()];
+        Arrays.fill(securityWordLetters, '_');
     }
 
-    /**
-     * Заполнение массива для пользователя вводимыми пользователем букв
-     */
-    public  static char[] getSecurityWordLetters(char inputLetter) {
-        for (int i = 0; i < WORD_LETTERS.length; i++) {
-            if (WORD_LETTERS[i] == inputLetter) {
-                SECURITY_WORD_LETTERS[i] = inputLetter;
+    private static void printSecurityWordLetters() {
+        String securityWord = new String(securityWordLetters);
+        System.out.println("ЗАГАДАННОЕ СЛОВО: " + securityWord);
+    }
+
+    private static void addLetterSecurityWordLetters(char inputLetter) {
+        for (int i = 0; i < wordLetters.length; i++) {
+            if (wordLetters[i] == inputLetter) {
+                securityWordLetters[i] = inputLetter;
             }
         }
-        return SECURITY_WORD_LETTERS;
     }
 
-    /**
-     * Получение буквы из консоли от пользователя
-     */
-    public static char getLetterUser() {
-        Scanner scanner = new Scanner(System.in);
+    private static void setLetterUser() {
         try {
             while(true) {
                 String input = scanner.next().toUpperCase();
-                if (isCorrectedInput(input)) {
-                    INPUT_LETTER = input.charAt(0);
+                if (isValidInput(input)) {
+                    inputLetter = input.charAt(0);
                     break;
+                } else {
+                    printMessageInputError(input);
                 }
             }
         } catch (Exception e) {
-            System.out.println("ПРОИЗОШЛА ОШИБКА: " + e.getMessage());
+            System.out.println(MESSAGE_ERROR + e.getMessage());
         }
-        return INPUT_LETTER;
     }
 
-    /**
-     * Проверка корректности ввода: 1.пустота 2.повтор 3.неверный формат
-     */
-    public static boolean isCorrectedInput(String value) {
-        boolean inputResult = true;
-        if (value.isBlank()) {
-            System.out.print("Ошибка ввода. Пустое значение – вы ничего не ввели! Введите букву и нажмите enter: ");
-            inputResult = false;
-        } else if (INPUT_LETTERS.contains(value)) {
-            System.out.print("Ошибка ввода. Повтор буквы – вы вводили уже эту букву! Введите букву и нажмите enter: ");
-            inputResult = false;
-        } else if (!value.matches("[а-яА-Я]")) {
-            System.out.print("Ошибка ввода. Неверный формат - это не буква русского языка! Введите букву и нажмите enter: ");
-            inputResult = false;
-        }
-        return inputResult;
+    private static boolean isValidInput(String value) {
+        return !isEmptyInput(value) && isRussianLetterInput(value) && !isRepeatInput(value);
     }
 
-    /**
-     * Счетчик ошибок пользователя
-     */
-    public static int getCountMistake(char letter) {
-        boolean isMatchValueInArray = false;
-        for (char wordLetters : WORD_LETTERS) {
+    private static boolean isEmptyInput(String value) {
+        return value.isBlank();
+    }
+
+    private static boolean isRepeatInput(String value) {
+        return INPUT_LETTERS.contains(value);
+    }
+
+    private static boolean isRussianLetterInput(String value) {
+        Matcher matcher = pattern.matcher(value);
+        return matcher.find();
+    }
+
+    private static void printMessageInputError(String value) {
+        if(isEmptyInput(value)) {
+            System.out.print(MESSAGE_EMPTY_INPUT + MESSAGE_LETTER_INPUT);
+        } else if(isRepeatInput(value)) {
+            System.out.print(MESSAGE_REPEAT_INPUT + MESSAGE_LETTER_INPUT);
+        } else if(!isRussianLetterInput(value)) {
+            System.out.print(MESSAGE_NOT_RU_LETTER_INPUT + MESSAGE_LETTER_INPUT);
+        }
+    }
+
+    private static void setCountMistake(char letter) {
+        boolean isLetterContainsWord = false;
+        for (char wordLetters : wordLetters) {
             if (wordLetters == Character.toUpperCase(letter)) {
-                isMatchValueInArray = true;
+                isLetterContainsWord = true;
             }
         }
-        if (!isMatchValueInArray) COUNT_MISTAKE++;
-        return COUNT_MISTAKE;
+        if (!isLetterContainsWord) {
+            countMistake++;
+        }
     }
 
-    /**
-     * Добавление буквы в список уже использованных букв ввода пользователя
-     */
-    public static void addUsedLetters(char inputLetter) {
+    private static void addUsedLetters(char inputLetter) {
         INPUT_LETTERS.add(Character.toString(inputLetter));
     }
 
-    /**
-     * Информационное сообщение о кол-ве ошибок и букв, которые были использованы игроком
-     */
-    public static void printMessageInfo() {
-        System.out.printf("ОШИБКИ : %d/%d. ИСПОЛЬЗОВАННЫЕ БУКВЫ: %s\n", COUNT_MISTAKE, MAX_COUNT_MISTAKE, showUsedLetters());
+    private static void printMessageInfo() {
+        System.out.printf("ОШИБКИ : %d/%d. ИСПОЛЬЗОВАННЫЕ БУКВЫ: %s\n", countMistake, MAX_COUNT_MISTAKE, showUsedLetters());
     }
 
-    /**
-     * Отображение использованных букв пользователя
-     */
-    public static String showUsedLetters() {
+    private static String showUsedLetters() {
         return String.join(", ", INPUT_LETTERS);
     }
-
-    /**
-     * Вывод засекреченного слова для пользователя
-     */
-    public static void showSecurityWordLetters () {
-        System.out.print("СЛОВО: ");
-        System.out.println(SECURITY_WORD_LETTERS);
-    }
-
-    /**
-     * Рисование виселицы
-     */
-    public static void drowGallows(int contMistake) {
-        String conditionGallows = "_______\n|\n|\n|\n|\n";
-        String conditionHead = "_______\n|   ()\n|\n|\n|\n";
-        String conditionBody = "_______\n|   ()\n|   []\n|\n|\n";
-        String conditionLeftHand = "_______\n|   ()\n|  /[]\n|\n|\n";
-        String conditionRightHand = "_______\n|   ()\n|  /[]\\\n|\n|\n";
-        String conditionLeftLeg = "_______\n|   ()\n|  /[]\\\n|  _/\n|\n";
-        String conditionRightLeg = "_______\n|   ()\n|  /[]\\\n|  _/\\_\n|\n";
-        switch(contMistake) {
-            case 0:
-                System.out.println(conditionGallows);
-                break;
-            case 1:
-                System.out.println(conditionHead);
-                break;
-            case 2:
-                System.out.println(conditionBody);
-                break;
-            case 3:
-                System.out.println(conditionLeftHand);
-                break;
-            case 4:
-                System.out.println(conditionRightHand);
-                break;
-            case 5:
-                System.out.println(conditionLeftLeg);
-                break;
-            case 6:
-                System.out.println(conditionRightLeg);
-                break;
-        }
-    }
-
 
 }
