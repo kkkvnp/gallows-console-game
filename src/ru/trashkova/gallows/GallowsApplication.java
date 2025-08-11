@@ -10,17 +10,17 @@ import java.util.stream.Stream;
 
 public class GallowsApplication {
 
-    private static final Pattern pattern = Pattern.compile("[а-яА-ЯёЁ]");
-    private static final Scanner scanner = new Scanner(System.in);
+    private static final Pattern PATTERN = Pattern.compile("[а-яА-ЯёЁ]");
+    private static final Scanner SCANNER = new Scanner(System.in);
 
     private static final String FILE_PATH = "resource/words.txt";
     private static String word;
     private static char[] wordLetters;
     private static char[] securityWordLetters;
-    private static char inputLetter;
+    private static int countMistake = 0;
+
     private static final List<String> INPUT_LETTERS = new ArrayList<>();
 
-    private static int countMistake = 0;
     private static final int MAX_COUNT_MISTAKE = 6;
 
     private static final String MESSAGE_ERROR = "ПРОИЗОШЛА ОШИБКА: ";
@@ -78,16 +78,16 @@ public class GallowsApplication {
         initSecurityWordLetters(word);
         printSecurityWordLetters();
 
-        while(!isGameOver()) {
+        while (!isGameOver()) {
             System.out.print(MESSAGE_LETTER_INPUT);
-            setLetterUser();
-            addUsedLetters(inputLetter);
-            setCountMistake(inputLetter);
-            addLetterSecurityWordLetters(inputLetter);
+            char letter = inputRuLetter();
+            addUsedLetters(letter);
+            setCountMistake(letter);
+            addLetterSecurityWordLetters(letter);
             printMessageInfo();
             Picture.printPicture(countMistake);
 
-            if(isWin()) {
+            if (isWin()) {
                 printWinMessage();
             } else if (isLose()) {
                 printLoseMessage();
@@ -146,12 +146,12 @@ public class GallowsApplication {
         return countLine;
     }
 
-    private static long getRandomCountLineFile (long value) {
+    private static long getRandomCountLineFile(long value) {
         Random rand = new Random();
         return rand.nextLong(value) + 1;
     }
 
-    private  static char[] toLetters(String word) {
+    private static char[] toLetters(String word) {
         return word.toUpperCase().toCharArray();
     }
 
@@ -173,45 +173,36 @@ public class GallowsApplication {
         }
     }
 
-    private static void setLetterUser() {
-        try {
-            while(true) {
-                String input = scanner.next().toUpperCase();
-                if (isValidInput(input)) {
-                    inputLetter = input.charAt(0);
-                    break;
-                } else {
-                    printMessageInputError(input);
-                }
+    private static char inputRuLetter() {
+        while (true) {
+            String input = SCANNER.next().toUpperCase();
+
+            if (isValidInput(input)) {
+                return input.charAt(0);
             }
-        } catch (Exception e) {
-            System.out.println(MESSAGE_ERROR + e.getMessage());
+            printMessageInputError(input);
         }
     }
 
-    private static boolean isValidInput(String value) {
-        return !isEmptyInput(value) && isRussianLetterInput(value) && !isRepeatInput(value);
-    }
 
-    private static boolean isEmptyInput(String value) {
-        return value.isBlank();
+
+    private static boolean isValidInput(String value) {
+        return isRussianStringInput(value) && !isRepeatInput(value);
     }
 
     private static boolean isRepeatInput(String value) {
         return INPUT_LETTERS.contains(value);
     }
 
-    private static boolean isRussianLetterInput(String value) {
-        Matcher matcher = pattern.matcher(value);
+    private static boolean isRussianStringInput(String value) {
+        Matcher matcher = PATTERN.matcher(value);
         return matcher.find();
     }
 
     private static void printMessageInputError(String value) {
-        if(isEmptyInput(value)) {
-            System.out.print(MESSAGE_EMPTY_INPUT + MESSAGE_LETTER_INPUT);
-        } else if(isRepeatInput(value)) {
+        if (isRepeatInput(value)) {
             System.out.print(MESSAGE_REPEAT_INPUT + MESSAGE_LETTER_INPUT);
-        } else if(!isRussianLetterInput(value)) {
+        } else if (!isRussianStringInput(value)) {
             System.out.print(MESSAGE_NOT_RU_LETTER_INPUT + MESSAGE_LETTER_INPUT);
         }
     }
