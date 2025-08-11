@@ -12,64 +12,26 @@ public class GallowsApplication {
 
     private static final Pattern PATTERN = Pattern.compile("[а-яА-ЯёЁ]");
     private static final Scanner SCANNER = new Scanner(System.in);
-
     private static final String FILE_PATH = "resource/words.txt";
-    private static String word;
-    private static char[] wordLetters;
-    private static char[] securityWordLetters;
-    private static int countMistake = 0;
-
-    private static final List<String> INPUT_LETTERS = new ArrayList<>();
-
+    private static final List<String> INPUT_LETTERS = new ArrayList<>();//TODO Character
     private static final int MAX_COUNT_MISTAKE = 6;
-
     private static final String MESSAGE_ERROR = "ПРОИЗОШЛА ОШИБКА: ";
     private static final String MESSAGE_LETTER_INPUT = "ВВЕДИТЕ БУКВУ И НАЖМИТЕ ENTER: ";
-    private static final String MESSAGE_EMPTY_INPUT = "ОШИБКА ВВОДА: ПУСТОЕ ЗНАЧЕНИЕ - ВЫ НИЧЕГО НЕ ВВЕЛИ! ";
     private static final String MESSAGE_REPEAT_INPUT = "ОШИБКА ВВОДА: ПОВТОР БУКВЫ - ВЫ УЖЕ ВВОДИЛИ ЭТУК БУКВУ! ";
     private static final String MESSAGE_NOT_RU_LETTER_INPUT = "ОШИБКА ВВОДА: НЕВЕРНЫЙ ФОРМАТ - ЭТО НЕ БУКВА РУССКОГО ЯЗЫКА! ";
 
+    private static String word;
+    private static char[] wordLetters; //TODO излишне, обращаться к word.charAt(index)
+    private static char[] securityWordLetters;
+    private static int countMistake = 0;
 
     public static void main(String[] args) {
         startGameRound();
     }
 
     private static void startGameRound() {
-        showGameDescription();
-        showGameRules();
-        showGameStart();
+        DescriptionGame.printGameInfo();
         startGameLoop();
-    }
-
-    private static void showGameDescription() {
-        System.out.println("***");
-        System.out.println("ОПИСАНИЕ ИГРЫ.");
-        System.out.println("«Виселица» - это игра в слова.");
-        System.out.println("Один игрок загадывает слово, а второй игрок пытается его отгадать, предлагая свой вариант по одной букве.");
-        System.out.println("За каждую неверную букву, к виселице добавлять часть тела. Цель игры – отгадать слово до того, как висельник будет повешен.\n");
-    }
-
-    private static void showGameRules() {
-        System.out.println("***");
-        System.out.println("ПРАВИЛА ИГРЫ.");
-        System.out.println("""
-                1. ПРОГРАММА загадывает случайное слово русского языка.
-                   Слово – имя существительное в единственном числе или множественном числе при отсутствии у слова формы единственного числа.
-                   ПОЛЬЗОВАТЕЛЬ будет видеть количество букв загаданного слова (каждая буква загаданного слова засекречена и представлена в виде символа “_”).""");
-        System.out.println("2. ПОЛЬЗОВАТЕЛЬ угадывает слово по буквам.");
-        System.out.println("3. Если такая буква есть, ПРОГРАММА показывает ПОЛЬЗОВАТЕЛЮ позиции буквы в загаданном слове.");
-        System.out.println("""
-                4. Всего у ПОЛЬЗОВАТЕЛЯ будет 6 попыток отгадать слово.
-                   За каждый неправильный ответ счетчик попыток увеличивается, и ПРОГРАММА добавлять к виселице одну из 6 части тела: голова, тело, 2 руки и 2 ноги.
-                   Если на виселице тело нарисовано полностью, ПОЛЬЗОВАТЕЛЬ проигрывает и считается повешенным.
-                """);
-    }
-
-    private static void showGameStart() {
-        System.out.println("***");
-        System.out.println("Начало игры.");
-        System.out.println("Подождите, сейчас программа загадает слово…");
-        System.out.println("***");
     }
 
     private static void startGameLoop() {
@@ -174,6 +136,7 @@ public class GallowsApplication {
     }
 
     private static char inputRuLetter() {
+        //TODO должен возвращать любую ру одиночную букву - строка состоит из 1 символа и символ ру буква
         while (true) {
             String input = SCANNER.next().toUpperCase();
 
@@ -183,8 +146,6 @@ public class GallowsApplication {
             printMessageInputError(input);
         }
     }
-
-
 
     private static boolean isValidInput(String value) {
         return isRussianStringInput(value) && !isRepeatInput(value);
