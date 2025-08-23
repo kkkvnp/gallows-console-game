@@ -13,7 +13,7 @@ public class GallowsApplication {
     private static final Pattern PATTERN = Pattern.compile("[а-яА-ЯёЁ]");
     private static final Scanner SCANNER = new Scanner(System.in);
     private static final String FILE_PATH = "resource/words.txt";
-    private static final List<String> INPUT_LETTERS = new ArrayList<>();//TODO Character
+    private static final List<Character> INPUT_LETTERS = new ArrayList<>();//TODO Character
     private static final int MAX_COUNT_MISTAKE = 6;
     private static final String MESSAGE_ERROR = "ПРОИЗОШЛА ОШИБКА: ";
     private static final String MESSAGE_LETTER_INPUT = "ВВЕДИТЕ БУКВУ И НАЖМИТЕ ENTER: ";
@@ -137,30 +137,35 @@ public class GallowsApplication {
 
     private static char inputRuLetter() {
         //TODO должен возвращать любую ру одиночную букву - строка состоит из 1 символа и символ ру буква
+
+        char result;
         while (true) {
             String input = SCANNER.next().toUpperCase();
+            result = input.charAt(0);
 
-            if (isValidInput(input)) {
-                return input.charAt(0);
+            if (isValidInput(result)) {
+                return result;
             }
-            printMessageInputError(input);
+            printMessageInputError(result);
         }
     }
 
-    private static boolean isValidInput(String value) {
+
+
+    private static boolean isValidInput(char value) {
         return isRussianStringInput(value) && !isRepeatInput(value);
     }
 
-    private static boolean isRepeatInput(String value) {
+    private static boolean isRepeatInput(char value) {
         return INPUT_LETTERS.contains(value);
     }
 
-    private static boolean isRussianStringInput(String value) {
-        Matcher matcher = PATTERN.matcher(value);
+    private static boolean isRussianStringInput(char value) {
+        Matcher matcher = PATTERN.matcher(Character.toString(value));
         return matcher.find();
     }
 
-    private static void printMessageInputError(String value) {
+    private static void printMessageInputError(char value) {
         if (isRepeatInput(value)) {
             System.out.print(MESSAGE_REPEAT_INPUT + MESSAGE_LETTER_INPUT);
         } else if (!isRussianStringInput(value)) {
@@ -180,16 +185,21 @@ public class GallowsApplication {
         }
     }
 
-    private static void addUsedLetters(char inputLetter) {
-        INPUT_LETTERS.add(Character.toString(inputLetter));
+    private static void addUsedLetters(char letter) {
+        INPUT_LETTERS.add(letter);
     }
 
     private static void printMessageInfo() {
-        System.out.printf("ОШИБКИ : %d/%d. ИСПОЛЬЗОВАННЫЕ БУКВЫ: %s\n", countMistake, MAX_COUNT_MISTAKE, showUsedLetters());
+        System.out.printf("ОШИБКИ : %d/%d. ИСПОЛЬЗОВАННЫЕ БУКВЫ: %s\n", countMistake, MAX_COUNT_MISTAKE, toUserLetters());
     }
 
-    private static String showUsedLetters() {
-        return String.join(", ", INPUT_LETTERS);
+    private static String toUserLetters() {
+        StringJoiner usedLetters = new StringJoiner(",");
+        for (Character letter : INPUT_LETTERS) {
+            usedLetters.add(letter.toString());
+        }
+        return usedLetters.toString();
+        //return String.join(", ", INPUT_LETTERS);
     }
 
 }
