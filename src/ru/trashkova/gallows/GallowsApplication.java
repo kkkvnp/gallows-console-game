@@ -13,15 +13,12 @@ public class GallowsApplication {
     private static final Pattern PATTERN = Pattern.compile("[а-яА-ЯёЁ]");
     private static final Scanner SCANNER = new Scanner(System.in);
     private static final String FILE_PATH = "resource/words.txt";
-    private static final List<Character> INPUT_LETTERS = new ArrayList<>();//TODO Character
+    private static final List<Character> USED_LETTERS = new ArrayList<>();
     private static final int MAX_COUNT_MISTAKE = 6;
     private static final String MESSAGE_ERROR = "ПРОИЗОШЛА ОШИБКА: ";
-    private static final String MESSAGE_LETTER_INPUT = "ВВЕДИТЕ БУКВУ И НАЖМИТЕ ENTER: ";
-    private static final String MESSAGE_REPEAT_INPUT = "ОШИБКА ВВОДА: ПОВТОР БУКВЫ - ВЫ УЖЕ ВВОДИЛИ ЭТУК БУКВУ! ";
-    private static final String MESSAGE_NOT_RU_LETTER_INPUT = "ОШИБКА ВВОДА: НЕВЕРНЫЙ ФОРМАТ - ЭТО НЕ БУКВА РУССКОГО ЯЗЫКА! ";
 
     private static String word;
-    private static char[] wordLetters; //TODO излишне, обращаться к word.charAt(index)
+    private static char[] wordLetters;
     private static char[] securityWordLetters;
     private static int countMistake = 0;
 
@@ -38,29 +35,33 @@ public class GallowsApplication {
         word = getWord();
         wordLetters = toLetters(word);
         initSecurityWordLetters(word);
-        printSecurityWordLetters();
 
         while (!isGameOver()) {
-            System.out.print(MESSAGE_LETTER_INPUT);
+            printTurnInfo();
             char letter = inputRuLetter();
-            addUsedLetters(letter);
-            setCountMistake(letter);
-            addLetterSecurityWordLetters(letter);
-            printMessageInfo();
-            Picture.printPicture(countMistake);
+            if(isUsedLetter(letter)) {
+                System.out.println("ОШИБКА ВВОДА: ПОВТОР БУКВЫ - ВЫ УЖЕ ВВОДИЛИ ЭТУК БУКВУ! ");
+                continue;
+            }
+            addUsedLetter(letter);
+            if(!isWordLetter(letter)) {
+                System.out.println("ТАКОЙ БУКВЫ НЕТ В СЛОВЕ!");
+                countMistake++;
+            } else {
+                openLetter(letter);
+            }
 
             if (isWin()) {
                 printWinMessage();
             } else if (isLose()) {
+                printTurnInfo();
                 printLoseMessage();
-            } else {
-                printSecurityWordLetters();
             }
         }
     }
 
     private static boolean isGameOver() {
-        return isWin() || isLose(); // countMistake > MAX_COUNT_MISTAKE;
+        return isWin() || isLose();
     }
 
     private static boolean isWin() {
@@ -78,6 +79,12 @@ public class GallowsApplication {
 
     private static void printLoseMessage() {
         System.out.printf("ПОПЫТКИ ЗАКОНЧАЛИСЬ, ВЫ ПРОИГРАЛИ! ЗАГАДАННОЕ СЛОВО - %s.", word);
+    }
+
+    private static void printTurnInfo() {
+        Picture.printPicture(countMistake);
+        printSecurityWordLetters();
+        printMessageInfo();
     }
 
     private static String getWord() {
@@ -123,70 +130,58 @@ public class GallowsApplication {
     }
 
     private static void printSecurityWordLetters() {
-        String securityWord = new String(securityWordLetters);
-        System.out.println("ЗАГАДАННОЕ СЛОВО: " + securityWord);
+        String s = new String(securityWordLetters);
+        System.out.println("ЗАГАДАННОЕ СЛОВО: " + s);
     }
 
-    private static void addLetterSecurityWordLetters(char inputLetter) {
-        for (int i = 0; i < wordLetters.length; i++) {
-            if (wordLetters[i] == inputLetter) {
-                securityWordLetters[i] = inputLetter;
+    private static void openLetter(char letter) {
+        for(int i = 0; i < wordLetters.length; i++) {
+            if (wordLetters[i] == letter) {
+                securityWordLetters[i] = letter;
             }
         }
     }
 
     private static char inputRuLetter() {
-        //TODO должен возвращать любую ру одиночную букву - строка состоит из 1 символа и символ ру буква
 
-        char result;
         while (true) {
+            System.out.print("ВВЕДИТЕ БУКВУ И НАЖМИТЕ ENTER: ");
             String input = SCANNER.next().toUpperCase();
-            result = input.charAt(0);
-
-            if (isValidInput(result)) {
-                return result;
+            if(!isSingleSymbol(input)) {
+                System.out.println("ОШИБКА ВВОДА: ЭТО НЕОДИЧНАЯ БУКВА ");
+            } else if(!isRuLetter(input.charAt(0))) {
+                System.out.println("ОШИБКА ВВОДА: ЭТО НЕ БУКВА РУССКОГО ЯЗЫКА! ");
+            } else {
+                return input.charAt(0);
             }
-            printMessageInputError(result);
         }
     }
 
-
-
-    private static boolean isValidInput(char value) {
-        return isRussianStringInput(value) && !isRepeatInput(value);
+    private static boolean isSingleSymbol(String value) {
+        return value.length() == 1;
     }
 
-    private static boolean isRepeatInput(char value) {
-        return INPUT_LETTERS.contains(value);
+    private static boolean isUsedLetter(char value) {
+        return USED_LETTERS.contains(value);
     }
 
-    private static boolean isRussianStringInput(char value) {
+    private static boolean isWordLetter(char letter) {
+
+        for(char c : wordLetters) {
+            if (c == letter) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isRuLetter(char value) {
         Matcher matcher = PATTERN.matcher(Character.toString(value));
         return matcher.find();
     }
 
-    private static void printMessageInputError(char value) {
-        if (isRepeatInput(value)) {
-            System.out.print(MESSAGE_REPEAT_INPUT + MESSAGE_LETTER_INPUT);
-        } else if (!isRussianStringInput(value)) {
-            System.out.print(MESSAGE_NOT_RU_LETTER_INPUT + MESSAGE_LETTER_INPUT);
-        }
-    }
-
-    private static void setCountMistake(char letter) {
-        boolean isLetterContainsWord = false;
-        for (char wordLetters : wordLetters) {
-            if (wordLetters == Character.toUpperCase(letter)) {
-                isLetterContainsWord = true;
-            }
-        }
-        if (!isLetterContainsWord) {
-            countMistake++;
-        }
-    }
-
-    private static void addUsedLetters(char letter) {
-        INPUT_LETTERS.add(letter);
+    private static void addUsedLetter(char letter) {
+        USED_LETTERS.add(letter);
     }
 
     private static void printMessageInfo() {
@@ -195,11 +190,10 @@ public class GallowsApplication {
 
     private static String toUserLetters() {
         StringJoiner usedLetters = new StringJoiner(",");
-        for (Character letter : INPUT_LETTERS) {
+        for (Character letter : USED_LETTERS) {
             usedLetters.add(letter.toString());
         }
         return usedLetters.toString();
-        //return String.join(", ", INPUT_LETTERS);
     }
 
 }
